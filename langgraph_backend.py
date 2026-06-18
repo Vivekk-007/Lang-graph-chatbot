@@ -41,9 +41,9 @@ graph.add_edge(START, "chat_node")
 graph.add_edge("chat_node", END)
 
 chatbot = graph.compile(checkpointer=checkpointer)
-CONFIG = {'configurable': {'thread_id': 'thread-1'}}
+CONFIG = {'configurable': {'thread_id': 'thread-2'}}
 response = chatbot.invoke(
-    {'messages': [HumanMessage(content="what is my name")]},
+    {'messages': [HumanMessage(content="tell me my name and my favourate sports is football")]},
     config= CONFIG
 )
 print(response)

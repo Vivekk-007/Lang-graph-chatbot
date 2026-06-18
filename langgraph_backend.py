@@ -1,17 +1,26 @@
-from langgraph.graph import StateGraph, START, END
-from typing import TypedDict, Annotated
-from langchain_core.messages import BaseMessage
-import os
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.checkpoint.memory import InMemorySaver
-from langgraph.graph.message import add_messages
-from dotenv import load_dotenv
+from concurrent.futures import thread
 
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
+from langgraph.checkpoint.sqlite import SqliteSaver
+
+from typing import TypedDict, Annotated
+
+from langchain_core.messages import BaseMessage, HumanMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
+import sqlite3
+
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
 load_dotenv()
 
+# Initialize Gemini
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
-    google_api_key=os.getenv("GOOGLE_API_KEY")
+    google_api_key=os.getenv("GOOGLE_API_KEY"),
+    streaming=True
 )
 
 class ChatState(TypedDict):
@@ -23,7 +32,8 @@ def chat_node(state: ChatState):
     return {"messages": [response]}
 
 # Checkpointer
-checkpointer = InMemorySaver()
+conn = sqlite3.connect(database='chatbot.db', check_same_thread=False)
+checkpointer = SqliteSaver(conn = conn)
 
 graph = StateGraph(ChatState)
 graph.add_node("chat_node", chat_node)
@@ -31,3 +41,9 @@ graph.add_edge(START, "chat_node")
 graph.add_edge("chat_node", END)
 
 chatbot = graph.compile(checkpointer=checkpointer)
+CONFIG = {'configurable': {'thread_id': 'thread-1'}}
+response = chatbot.invoke(
+    {'messages': [HumanMessage(content="what is my name")]},
+    config= CONFIG
+)
+print(response)
